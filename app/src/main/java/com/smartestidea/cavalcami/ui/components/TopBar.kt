@@ -33,7 +33,7 @@ fun TopBar(modifier: Modifier = Modifier, onNavIconPress: () -> Unit) {
     val painter = rememberAsyncImagePainter(
         ImageRequest
             .Builder(LocalContext.current)
-            .data(data= (user.get("profile_photo") as ParseFile).file)
+            .data(data= (user.get("profile_photo") as ParseFile?)?.file)
             .build()
     )
     val ibContColor = MaterialTheme.colorScheme.tertiary

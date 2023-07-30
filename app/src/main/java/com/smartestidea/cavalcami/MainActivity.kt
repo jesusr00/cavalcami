@@ -10,7 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.parse.ParseUser
-import com.smartestidea.cavalcami.ui.screens.Home
+import com.smartestidea.cavalcami.ui.screens.CavalCamiApp
 import com.smartestidea.cavalcami.ui.screens.Login
 import com.smartestidea.cavalcami.ui.screens.USER_AGENT
 import com.smartestidea.cavalcami.ui.theme.CavalCamiTheme
@@ -38,8 +38,9 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
 //                    PresentationPager()
+
                     val user = ParseUser.getCurrentUser()
-                    if(user != null) Home(userViewModel){
+                    if(user != null) CavalCamiApp(userViewModel){
                         mapView = it
                     } else Login(userViewModel)
                 }

@@ -131,16 +131,7 @@ fun Login(userViewModel: UserViewModel) {
                 }
             }
             AnimatedVisibility(isRegister){
-                ImagePicker(label = null, circleShape = true, modifier= Modifier.size(100.dp)){uri->
-                    if (uri != null) {
-                        val bytes = uri.path?.let { ctx.contentResolver.openInputStream(uri)!!.readBytes() }
-                        if(bytes!=null){
-                            FileOutputStream(profilePhoto).use {
-                                it.write(bytes)
-                            }
-                        }
-                    }
-                }
+                ImagePicker(label = null, circleShape = true,file = profilePhoto, modifier= Modifier.size(100.dp))
             }
             AnimatedVisibility(isRegister){
                 DefaultField(value = username, labelRes = R.string.username, icon = Icons.Rounded.AccountCircle){
@@ -183,33 +174,9 @@ fun Login(userViewModel: UserViewModel) {
                         .height(100.dp)
                         .fillMaxWidth(0.9f), horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    ImagePicker(label = R.string.front_ci, modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f)){uri->
-                        if (uri != null) {
-                            val bytes = uri.path?.let { ctx.contentResolver.openInputStream(uri)!!.readBytes() }
-                            if(bytes!=null){
-                                FileOutputStream(frontCI).use {
-                                    it.write(bytes)
-                                }
-                            }
-                        }
-                    }
+                    ImagePicker(label = R.string.front_ci,file= frontCI, modifier = Modifier.fillMaxSize().weight(1f))
                     Spacer(Modifier.width(10.dp))
-                    ImagePicker(
-                        label=R.string.back_ci, modifier = Modifier
-                            .fillMaxSize()
-                            .weight(1f)
-                    ){uri->
-                        if (uri != null) {
-                            val bytes = uri.path?.let { ctx.contentResolver.openInputStream(uri)!!.readBytes() }
-                            if(bytes!=null){
-                                FileOutputStream(backCI).use {
-                                    it.write(bytes)
-                                }
-                            }
-                        }
-                    }
+                    ImagePicker(label=R.string.back_ci,file=backCI, modifier = Modifier.fillMaxSize().weight(1f))
                 }
             }
 

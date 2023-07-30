@@ -35,4 +35,7 @@
     <string name="account_already_exists_for_this_username">Account already exists for this username</string>
     <string name="account_already_exists_for_this_email">Account already exists for this email address</string>
     <string name="edit_profile">Edit profile</string>
+    <string name="logout">Logout</string>
+    <string name="home">Home</string>
+    <string name="help">Help</string>
 </resources>

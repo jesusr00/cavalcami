@@ -25,21 +25,34 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.smartestidea.cavalcami.R
 import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImagePicker(label: Any?, modifier: Modifier = Modifier, circleShape:Boolean = false, onSelect:(uri:Uri?)->Unit){
+fun ImagePicker(label: Any?,file:File, modifier: Modifier = Modifier, circleShape:Boolean = false, onSelect:(uri:Uri?)->Unit = {}){
+    val ctx = LocalContext.current
     val text = if(label==null) "" else if(label is Int) stringResource(id = label) else label.toString()
     var photoUri: Uri? by rememberSaveable{
-        mutableStateOf(null)
+        mutableStateOf(file.toUri())
     }
-    val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.PickVisualMedia()){
-        photoUri = it
-        onSelect(it)
+    val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.PickVisualMedia()){uri->
+        photoUri = uri
+        onSelect(uri)
+        if (uri != null) {
+            val bytes = uri.path?.let {
+                ctx.contentResolver.openInputStream(uri)!!.readBytes()
+            }
+            if(bytes!=null){
+                FileOutputStream(file).use {
+                    it.write(bytes)
+                }
+            }
+        }
     }
     OutlinedCard(onClick = {
         launcher.launch(PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly))
