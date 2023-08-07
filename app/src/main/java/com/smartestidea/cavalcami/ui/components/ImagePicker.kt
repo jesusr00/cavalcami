@@ -1,6 +1,9 @@
 package com.smartestidea.cavalcami.ui.components
 
+import android.graphics.Path
 import android.net.Uri
+import android.provider.DocumentsContract
+import android.webkit.MimeTypeMap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,8 +32,10 @@ import androidx.core.net.toUri
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.smartestidea.cavalcami.R
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URLConnection
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

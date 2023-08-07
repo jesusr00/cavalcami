@@ -3,9 +3,13 @@ package com.smartestidea.cavalcami.data.back4app
 import android.util.Log
 import com.parse.Parse
 import com.parse.ParseException
+import com.parse.ParseObject
+import com.parse.ParseQuery
 import com.parse.ParseUser
 import com.parse.SignUpCallback
 import com.smartestidea.cavalcami.core.getError
+import com.smartestidea.cavalcami.data.model.Trip
+import com.smartestidea.cavalcami.data.model.toParse
 import javax.inject.Inject
 
 class Back4AppManager @Inject constructor() {
@@ -55,4 +59,45 @@ class Back4AppManager @Inject constructor() {
             }
         }
     }
+    fun saveUser(user:ParseUser, onSuccess:()->Unit, onError: (errorMsgRes: Int) -> Unit){
+        user.saveInBackground { e->
+            if(e==null){
+                onSuccess()
+            }else{
+                Log.e("B4App_ERROR", e.message+" :: "+ e.code)
+                onError(getError(e.code))
+            }
+        }
+    }
+
+    fun saveTrip(trip: Trip, onSuccess:()->Unit, onError: (errorMsgRes: Int) -> Unit){
+        val parseTrip = trip.toParse()
+        parseTrip.saveInBackground {e->
+            if(e==null){
+                onSuccess()
+            }else{
+                Log.e("B4App_ERROR", e.message+" :: "+ e.code)
+                onError(getError(e.code))
+            }
+        }
+    }
+
+    fun removeTrip(onSuccess:()->Unit, onError: (errorMsgRes: Int) -> Unit){
+        val query = ParseQuery<ParseObject>("Trip")
+        query.whereEqualTo("client",ParseUser.getCurrentUser())
+        query.findInBackground { trips, e ->
+            if(e==null){
+                trips[0].deleteInBackground { e->
+                    if(e==null){
+                        onSuccess()
+                    }else{
+                        onError(getError(e.code))
+                    }
+                }
+            }else{
+                onError(getError(e.code))
+            }
+        }
+    }
+
 }

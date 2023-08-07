@@ -1,7 +1,6 @@
 package com.smartestidea.cavalcami.ui.screens
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -54,11 +53,11 @@ import com.smartestidea.cavalcami.ui.components.fields.DefaultField
 import com.smartestidea.cavalcami.ui.components.fields.EmailField
 import com.smartestidea.cavalcami.ui.components.fields.PasswordField
 import com.smartestidea.cavalcami.ui.components.fields.PhoneField
+import com.smartestidea.cavalcami.ui.stateflows.MainUIState
 import com.smartestidea.cavalcami.ui.viewmodels.UserViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileOutputStream
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,6 +85,9 @@ fun Login(userViewModel: UserViewModel) {
     if(profilePhoto.exists()) profilePhoto.delete()
     if(frontCI.exists()) frontCI.delete()
     if(backCI.exists()) backCI.delete()
+
+    val uiState by userViewModel.mainUIState.collectAsState()
+    if(uiState is MainUIState.Error) displaySb(snackBarHostState, (uiState as MainUIState.Error).errorMsgRes, scope, ctx)
 
     Scaffold(snackbarHost = {
         SnackbarHost(hostState = snackBarHostState){
@@ -134,9 +136,14 @@ fun Login(userViewModel: UserViewModel) {
                 ImagePicker(label = null, circleShape = true,file = profilePhoto, modifier= Modifier.size(100.dp))
             }
             AnimatedVisibility(isRegister){
-                DefaultField(value = username, labelRes = R.string.username, icon = Icons.Rounded.AccountCircle){
-                    username = it
-                }
+                DefaultField(
+                    value = username,
+                    labelRes = R.string.username,
+                    icon = Icons.Rounded.AccountCircle,
+                    onValueChange = {
+                        username = it
+                    },
+                )
             }
 
             EmailField(value = if(!isRegister) emailOrUsername else email,
@@ -174,9 +181,13 @@ fun Login(userViewModel: UserViewModel) {
                         .height(100.dp)
                         .fillMaxWidth(0.9f), horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    ImagePicker(label = R.string.front_ci,file= frontCI, modifier = Modifier.fillMaxSize().weight(1f))
+                    ImagePicker(label = R.string.front_ci,file= frontCI, modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f))
                     Spacer(Modifier.width(10.dp))
-                    ImagePicker(label=R.string.back_ci,file=backCI, modifier = Modifier.fillMaxSize().weight(1f))
+                    ImagePicker(label=R.string.back_ci,file=backCI, modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f))
                 }
             }
 
@@ -195,23 +206,28 @@ fun Login(userViewModel: UserViewModel) {
             }
             Button(onClick = {
                 if(!isRegister) {
-                    userViewModel.login(emailOrUsername, password, onSuccess = {
-                        Log.i(null, "SUCCESS")
-                    }, onError = { errorMsgRes: Int ->
-                        displayError(snackBarHostState, errorMsgRes, scope, ctx)
-                    })
+                    userViewModel.login(emailOrUsername, password)
                 }else{
-                    userViewModel.signUp(username,email,password,repeatPassword, userPhoneNumber, firstEmergencyNumber, secondEmergencyNumber,
-                        profilePhoto, frontCI, backCI,{
-                            Log.i(null, "SUCCESS")
-                        } ){errorMsgRes->
-                        displayError(snackBarHostState, errorMsgRes, scope, ctx)
-                    }
+                    userViewModel.signUp(
+                        username,
+                        email,
+                        password,
+                        repeatPassword,
+                        userPhoneNumber,
+                        firstEmergencyNumber,
+                        secondEmergencyNumber,
+                        profilePhoto,
+                        frontCI,
+                        backCI
+                    )
                 }
             }, modifier = Modifier.fillMaxWidth(0.9f), colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.tertiary,
-            )) {
-                Text(text = stringResource(id = if(!isRegister) R.string.login else R.string.sign_up), fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(5.dp), color = Color.White)
+                containerColor =  MaterialTheme.colorScheme.tertiary,
+            ), enabled = uiState != MainUIState.Loading) {
+                if(uiState != MainUIState.Loading)
+                    Text(text = stringResource(id = if(!isRegister) R.string.login else R.string.sign_up), fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(5.dp), color = Color.White)
+                else
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 1.dp)
             }
             AnimatedVisibility(visible = !isRegister) {
                 Row(
@@ -241,16 +257,16 @@ fun Login(userViewModel: UserViewModel) {
     }
 }
 
-fun displayError(
+fun displaySb(
     snackBarHostState: SnackbarHostState,
-    errorMsgRes: Int,
+    msgRes: Int,
     scope: CoroutineScope,
     ctx: Context
 ) {
-    Log.e("ERROR", ctx.getString(errorMsgRes))
+    Log.e("ERROR", ctx.getString(msgRes))
     scope.launch {
         snackBarHostState.showSnackbar(
-            message = ctx.getString(errorMsgRes),
+            message = ctx.getString(msgRes),
             actionLabel = ctx.getString(R.string.close),
             duration = SnackbarDuration.Short
         )

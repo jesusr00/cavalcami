@@ -8,12 +8,16 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.parse.ParseUser
 import com.smartestidea.cavalcami.ui.screens.CavalCamiApp
 import com.smartestidea.cavalcami.ui.screens.Login
 import com.smartestidea.cavalcami.ui.screens.USER_AGENT
+import com.smartestidea.cavalcami.ui.stateflows.MainUIState
 import com.smartestidea.cavalcami.ui.theme.CavalCamiTheme
+import com.smartestidea.cavalcami.ui.viewmodels.TripViewModel
 import com.smartestidea.cavalcami.ui.viewmodels.UserViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import org.osmdroid.config.Configuration
@@ -22,6 +26,7 @@ import org.osmdroid.views.MapView
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val userViewModel:UserViewModel by viewModels()
+    private val tripViewModel: TripViewModel by viewModels()
     private var mapView: MapView? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +36,7 @@ class MainActivity : ComponentActivity() {
             userAgentValue = USER_AGENT
         }
         setContent {
+            val uiState by userViewModel.mainUIState.collectAsState()
             CavalCamiTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
@@ -39,10 +45,10 @@ class MainActivity : ComponentActivity() {
                 ) {
 //                    PresentationPager()
 
-                    val user = ParseUser.getCurrentUser()
-                    if(user != null) CavalCamiApp(userViewModel){
-                        mapView = it
-                    } else Login(userViewModel)
+                    if((uiState == MainUIState.Success || uiState == MainUIState.Idle) && ParseUser.getCurrentUser()!=null)
+                        CavalCamiApp(userViewModel, tripViewModel){ mapView = it }
+                    else
+                        Login(userViewModel)
                 }
             }
         }
