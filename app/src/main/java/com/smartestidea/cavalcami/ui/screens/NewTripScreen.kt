@@ -72,9 +72,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewTripScreen(navController: NavHostController, tripViewModel: TripViewModel) {
-    val snackBarHostState = SnackbarHostState()
-    val parseTrip by tripViewModel.parseTrip.collectAsState()
-
+    val parseTrips by tripViewModel.parseTrips.collectAsState()
+    val parseTrip = parseTrips.getOrNull(0)
     var startAddress:Address? by rememberSaveable {
         mutableStateOf(null)
     }
@@ -101,7 +100,7 @@ fun NewTripScreen(navController: NavHostController, tripViewModel: TripViewModel
     }
     LaunchedEffect(Unit){
         if(parseTrip!=null){
-            val trip = parseTrip!!.toTrip()
+            val trip = parseTrip.toTrip()
             isLoadingStartAddress = true
             getAddress(trip.startGeoPoint){address ->
                 startAddress = address
@@ -121,11 +120,6 @@ fun NewTripScreen(navController: NavHostController, tripViewModel: TripViewModel
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val uiState by tripViewModel.mainUIState.collectAsState()
-    when(uiState ) {
-        is MainUIState.Error -> displaySb(snackBarHostState, (uiState as MainUIState.Error).errorMsgRes, scope, ctx)
-        MainUIState.Success -> displaySb(snackBarHostState, R.string.request_complete, scope, ctx)
-        else -> {}
-    }
     Scaffold(
         topBar = { TopAppBar(title = { Text(text = stringResource(id = R.string.reservation_request)) },navigationIcon = {
             IconButton(onClick = {
@@ -134,11 +128,6 @@ fun NewTripScreen(navController: NavHostController, tripViewModel: TripViewModel
                 Icon(imageVector = Icons.Rounded.ArrowBack, contentDescription = stringResource(id = R.string.back))
             }
         })
-        },
-        snackbarHost = {
-            SnackbarHost(hostState = snackBarHostState){
-                Snackbar(snackbarData = it, containerColor = if(uiState == MainUIState.Success) Success else MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error, actionColor = MaterialTheme.colorScheme.onErrorContainer)
-            }
         }, modifier = Modifier.imePadding()
     ) {innerPadding->
         Column(modifier= Modifier
@@ -239,7 +228,7 @@ fun NewTripScreen(navController: NavHostController, tripViewModel: TripViewModel
             }, modifier = Modifier.fillMaxWidth(0.9f), colors = ButtonDefaults.buttonColors(
                 containerColor =  MaterialTheme.colorScheme.tertiary,
             ), enabled = uiState != MainUIState.Loading && !isLoadingDestAddress && !isLoadingStartAddress) {
-                if(uiState != MainUIState.Loading) Text(text = stringResource(id = R.string.request), fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(5.dp), color = Color.White)
+                if(uiState != MainUIState.Loading) Text(text = stringResource(id = if(parseTrip==null) R.string.request else R.string.save), fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(5.dp), color = Color.White)
                 else CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 1.dp)
             }
             Spacer(modifier = Modifier.height(10.dp))

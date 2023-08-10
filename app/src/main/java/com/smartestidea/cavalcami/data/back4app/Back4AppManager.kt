@@ -10,91 +10,99 @@ import com.parse.SignUpCallback
 import com.smartestidea.cavalcami.core.getError
 import com.smartestidea.cavalcami.data.model.Trip
 import com.smartestidea.cavalcami.data.model.toParse
+import com.smartestidea.cavalcami.data.model.toTrip
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.sync.Mutex
 import javax.inject.Inject
 
 class Back4AppManager @Inject constructor() {
     fun login(
-        username:String?,
-        email:String?,
-        password:String, onSuccess:()->Unit, onError: (errorMsgRes: Int) -> Unit
-    ){
-        if(username == null){
+        username: String?,
+        email: String?,
+        password: String, onSuccess: () -> Unit, onError: (errorMsgRes: Int) -> Unit
+    ) {
+        if (username == null) {
             val query = ParseUser.getQuery()
-            query.whereEqualTo("email",email)
+            query.whereEqualTo("email", email)
             query.limit = 1
-            query.findInBackground{user, e ->
-                if(user!=null){
-                    loginWithUsername(user[0].username,password, onSuccess, onError)
-                }else if(e != null){
+            query.findInBackground { user, e ->
+                if (user != null) {
+                    loginWithUsername(user[0].username, password, onSuccess, onError)
+                } else if (e != null) {
                     onError(getError(e.code))
                 }
             }
-        }else{
+        } else {
             loginWithUsername(username, password, onSuccess, onError)
         }
     }
+
     private fun loginWithUsername(
-        username:String?,
-        password:String, onSuccess:()->Unit, onError: (errorMsgRes: Int) -> Unit
-    ){
-        ParseUser.logInInBackground(username, password){user:ParseUser?, e:ParseException? ->
-            if(user!=null){
+        username: String?,
+        password: String, onSuccess: () -> Unit, onError: (errorMsgRes: Int) -> Unit
+    ) {
+        ParseUser.logInInBackground(username, password) { user: ParseUser?, e: ParseException? ->
+            if (user != null) {
                 onSuccess()
-            }else{
+            } else {
                 ParseUser.logOut()
-                if(e!=null){
+                if (e != null) {
                     onError(getError(e.code))
                 }
             }
         }
     }
-    fun signUp(user:ParseUser, onSuccess:()->Unit, onError: (errorMsgRes: Int) -> Unit){
+
+    fun signUp(user: ParseUser, onSuccess: () -> Unit, onError: (errorMsgRes: Int) -> Unit) {
         user.signUpInBackground { e ->
             if (e == null) {
                 onSuccess()
             } else {
-                Log.e("B4App_ERROR", e.message+" :: "+ e.code)
+                Log.e("B4App_ERROR", e.message + " :: " + e.code)
                 ParseUser.logOut();
                 onError(getError(e.code))
             }
         }
     }
-    fun saveUser(user:ParseUser, onSuccess:()->Unit, onError: (errorMsgRes: Int) -> Unit){
-        user.saveInBackground { e->
-            if(e==null){
+
+    fun saveUser(user: ParseUser, onSuccess: () -> Unit, onError: (errorMsgRes: Int) -> Unit) {
+        user.saveInBackground { e ->
+            if (e == null) {
                 onSuccess()
-            }else{
-                Log.e("B4App_ERROR", e.message+" :: "+ e.code)
+            } else {
+                Log.e("B4App_ERROR", e.message + " :: " + e.code)
                 onError(getError(e.code))
             }
         }
     }
 
-    fun saveTrip(trip: Trip, onSuccess:()->Unit, onError: (errorMsgRes: Int) -> Unit){
+    fun saveTrip(trip: Trip, onSuccess: () -> Unit, onError: (errorMsgRes: Int) -> Unit) {
         val parseTrip = trip.toParse()
-        parseTrip.saveInBackground {e->
-            if(e==null){
+        parseTrip.saveInBackground { e ->
+            if (e == null) {
                 onSuccess()
-            }else{
-                Log.e("B4App_ERROR", e.message+" :: "+ e.code)
+            } else {
+                Log.e("B4App_ERROR", e.message + " :: " + e.code)
                 onError(getError(e.code))
             }
         }
     }
 
-    fun removeTrip(onSuccess:()->Unit, onError: (errorMsgRes: Int) -> Unit){
+    fun removeTrip(onSuccess: () -> Unit, onError: (errorMsgRes: Int) -> Unit) {
         val query = ParseQuery<ParseObject>("Trip")
-        query.whereEqualTo("client",ParseUser.getCurrentUser())
+        query.whereEqualTo("client", ParseUser.getCurrentUser())
         query.findInBackground { trips, e ->
-            if(e==null){
-                trips[0].deleteInBackground { e->
-                    if(e==null){
+            if (e == null) {
+                trips[0].deleteInBackground { e ->
+                    if (e == null) {
                         onSuccess()
-                    }else{
+                    } else {
                         onError(getError(e.code))
                     }
                 }
-            }else{
+            } else {
                 onError(getError(e.code))
             }
         }

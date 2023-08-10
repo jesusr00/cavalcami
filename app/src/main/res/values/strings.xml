@@ -66,4 +66,8 @@
     <string name="cancel">Cancel</string>
     <string name="are_you_sure">Are you sure?</string>
     <string name="this_trip_will_be_permanently_removed">This trip will be permanently removed</string>
+    <string name="trip_removed">Trip removed</string>
+    <string name="request_saved">Request saved</string>
+    <string name="take">Take</string>
+    <string name="call">Call</string>
 </resources>

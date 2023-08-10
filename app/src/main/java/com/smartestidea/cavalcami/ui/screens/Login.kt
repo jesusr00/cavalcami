@@ -87,7 +87,12 @@ fun Login(userViewModel: UserViewModel) {
     if(backCI.exists()) backCI.delete()
 
     val uiState by userViewModel.mainUIState.collectAsState()
-    if(uiState is MainUIState.Error) displaySb(snackBarHostState, (uiState as MainUIState.Error).errorMsgRes, scope, ctx)
+    if(uiState is MainUIState.Error) displaySb(
+        snackBarHostState,
+        (uiState as MainUIState.Error).errorMsgRes,
+        scope,
+        ctx
+    )
 
     Scaffold(snackbarHost = {
         SnackbarHost(hostState = snackBarHostState){
@@ -268,7 +273,7 @@ fun displaySb(
         snackBarHostState.showSnackbar(
             message = ctx.getString(msgRes),
             actionLabel = ctx.getString(R.string.close),
-            duration = SnackbarDuration.Short
+            duration = SnackbarDuration.Short,
         )
     }
 }

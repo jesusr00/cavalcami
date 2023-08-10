@@ -112,5 +112,6 @@ fun TripView(start: Any?, dest: Any?) {
                     it.invalidate()
                 }
             }
+
         })
 }

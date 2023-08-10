@@ -2,9 +2,11 @@ package com.smartestidea.cavalcami.ui.screens
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.view.ViewGroup
@@ -43,6 +45,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,6 +55,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -78,16 +84,24 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.rememberPermissionState
+import com.parse.Parse
 import com.parse.ParseFile
 import com.parse.ParseObject
+import com.parse.ParseQuery
 import com.parse.ParseUser
 import com.smartestidea.cavalcami.R
 import com.smartestidea.cavalcami.core.getEstimatePrice
+import com.smartestidea.cavalcami.data.model.isDriver
 import com.smartestidea.cavalcami.data.model.toTrip
+import com.smartestidea.cavalcami.ui.components.CircleAvatar
+import com.smartestidea.cavalcami.ui.components.DrawerDetailContent
 import com.smartestidea.cavalcami.ui.components.TopBar
 import com.smartestidea.cavalcami.ui.components.TripView
 import com.smartestidea.cavalcami.ui.stateflows.MainUIState
+import com.smartestidea.cavalcami.ui.theme.Success
 import com.smartestidea.cavalcami.ui.viewmodels.TripViewModel
 import com.smartestidea.cavalcami.ui.viewmodels.UserViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -153,6 +167,7 @@ fun CavalCamiApp(
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         permissions.add(2,Manifest.permission.MANAGE_EXTERNAL_STORAGE)
     }
@@ -167,14 +182,23 @@ fun CavalCamiApp(
     var center:GeoPoint? by rememberSaveable {
        mutableStateOf(startGeoPoint)
     }
-    val parseTrip by tripViewModel.parseTrip.collectAsState()
     val tripUiState by tripViewModel.mainUIState.collectAsState()
 
+    val snackBarHostState = SnackbarHostState()
     var isDialogDeleteConfirm by rememberSaveable {
         mutableStateOf(false)
     }
+    val user = ParseUser.getCurrentUser()
 
-    Log.i("CURRENT",parseTrip?.toTrip().toString())
+    val parseTrips by tripViewModel.parseTrips.collectAsState()
+    val parseTrip  = parseTrips.getOrNull(0)
+
+    val query = ParseQuery<ParseObject>("Trip")
+    if(!user.isDriver()){
+        query.whereEqualTo("client",user)
+        query.limit = 1
+    }
+
 
     LaunchedEffect(Unit){
         if(!allPermissions.allPermissionsGranted){
@@ -186,6 +210,22 @@ fun CavalCamiApp(
                 lastCacheLocation = GeoPoint(location.latitude, location.longitude)
             }
         }
+    }
+
+    when(tripUiState ) {
+        is MainUIState.Error -> displaySb(
+            snackBarHostState,
+            (tripUiState as MainUIState.Error).errorMsgRes,
+            scope,
+            ctx
+        )
+        is MainUIState.Success -> (tripUiState as MainUIState.Success).successMsgRes?.let {
+            displaySb(
+                snackBarHostState,
+                it, scope, ctx
+            )
+        }
+        else -> {}
     }
 
     ModalNavigationDrawer(drawerContent = {
@@ -209,6 +249,16 @@ fun CavalCamiApp(
             } }
         }, drawerState= drawerDetailState, gesturesEnabled = drawerDetailState.isOpen) {
             Scaffold(
+                snackbarHost = {
+                    SnackbarHost(hostState = snackBarHostState){
+                        if(currentScreen != Home.id)
+                            Snackbar(
+                                snackbarData = it,
+                                containerColor = if(tripUiState is MainUIState.Success) Success else MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error,
+                                actionColor = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                    }
+                },
                 floatingActionButton = {
                     if(currentScreen == Home.id) {
                         Controllers(parseTrip,tripUiState, navController = navController,
@@ -228,7 +278,7 @@ fun CavalCamiApp(
             ) {innerPadding->
                 NavHost(navController = navController, startDestination = tabsSections[0].id,modifier = Modifier.padding(innerPadding)){
                     composable(Home.id){
-                        HomeScreen(center= center, parseTrip, onSelectedItem={selectedTrip->
+                        HomeScreen(center= center,parseTrips, onSelectedItem={ trip->
                             scope.launch {
                                 drawerDetailState.open()
                             }
@@ -237,6 +287,7 @@ fun CavalCamiApp(
                                 drawerState.open()
                             }
                         }
+
                     }
                     composable(Help.id){
                         HelpScreen(navController)
@@ -278,76 +329,6 @@ fun ConfirmDeleteDialog(onDismissRequest:()->Unit, onConfirm:()->Unit) {
     }
 }
 
-@Composable
-fun DrawerDetailContent(onRigthIconPress: ()->Unit,parseTrip:ParseObject, onBtnPress:()->Unit) {
-    val trip = parseTrip.toTrip()
-    var estimatedPrice:Int? by rememberSaveable {
-        mutableStateOf(null)
-    }
-    val ctx = LocalContext.current
-    LaunchedEffect(Unit){
-        withContext(Dispatchers.IO){
-            val roadManager = OSRMRoadManager(ctx, USER_AGENT)
-            val waypoints = arrayListOf<GeoPoint>()
-            waypoints.add(trip.startGeoPoint)
-            waypoints.add(trip.endGeoPoint)
-            roadManager.setMean(OSRMRoadManager.MEAN_BY_CAR)
-            val road = roadManager.getRoad(waypoints)
-            val roadOverlay = RoadManager.buildRoadOverlay(road)
-            estimatedPrice = getEstimatePrice(roadOverlay.distance/1000.0)
-        }
-    }
-    Box(modifier = Modifier
-        .fillMaxHeight()
-        .fillMaxWidth(0.9f)
-        .background(MaterialTheme.colorScheme.surface)) {
-        Column(modifier = Modifier
-            .padding(bottom = 30.dp, top = 10.dp, start = 20.dp, end = 20.dp)
-            .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    if (estimatedPrice == null){
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 1.dp, color = MaterialTheme.colorScheme.onBackground)
-                    }else{
-                        Text(text = "$$estimatedPrice", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    }
-                    IconButton(onClick = onRigthIconPress) {
-                        Icon(imageVector = Icons.Rounded.Edit, contentDescription = stringResource(id = R.string.edit))
-                    }
-                }
-                Divider(modifier = Modifier.fillMaxWidth())
-            }
-            Card(modifier= Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .heightIn(min = 100.dp)) {
-                TripView(start = trip.startGeoPoint, dest = trip.endGeoPoint)
-            }
-            val rows = listOf(
-                Pair(R.string.from,trip.startAddress),
-                Pair(R.string.to,trip.endAddress),
-                Pair(R.string.passengers,trip.passengers.toString()),
-                Pair(R.string.suitcases,trip.suitcases.toString())
-            )
-            for (i in rows.indices){
-                if(i<2){
-                    Column() {
-                        RowDetailItemContent(rows[i])
-                    }
-                }else{
-                    Row() {
-                        RowDetailItemContent(rows[i])
-                    }
-                }
-            }
-            ElevatedButton(onClick = onBtnPress, modifier= Modifier.fillMaxWidth()) {
-                Text(text = stringResource(id = R.string.cancel) , fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(5.dp))
-            }
-        }
-    }
-}
 
 @Composable
 fun RowDetailItemContent(row:Pair<Int,String>){
@@ -357,7 +338,7 @@ fun RowDetailItemContent(row:Pair<Int,String>){
 
 
 @Composable
-fun HomeScreen(center: GeoPoint?,parseTrip:ParseObject?,onSelectedItem:(ParseObject)->Unit, resetCenter:()->Unit, setOsmMap: (mapView: MapView) -> Unit, onNavIconPress: () -> Unit){
+fun HomeScreen(center: GeoPoint?,parseTrip:List<ParseObject?>,onSelectedItem:(ParseObject)->Unit, resetCenter:()->Unit, setOsmMap: (mapView: MapView) -> Unit, onNavIconPress: () -> Unit){
     Box(modifier = Modifier
         .fillMaxSize()){
         OsmMap(center,parseTrip,onSelectedItem,resetCenter){
@@ -406,12 +387,6 @@ fun Controllers(
 @Composable
 fun DrawerContent(navController: NavHostController, userViewModel: UserViewModel, onAnyPress:()->Unit) {
     val user = ParseUser.getCurrentUser()
-    val painter = rememberAsyncImagePainter(
-        ImageRequest
-            .Builder(LocalContext.current)
-            .data(data= (user?.get("profile_photo") as ParseFile?)?.file)
-            .build()
-    )
     Box(modifier = Modifier
         .fillMaxHeight()
         .fillMaxWidth(0.80f)
@@ -421,9 +396,7 @@ fun DrawerContent(navController: NavHostController, userViewModel: UserViewModel
             .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Surface(shape = CircleShape, modifier = Modifier.size(70.dp)) {
-                Image(painter = painter, contentDescription = "profile_photo", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            }
+            CircleAvatar(size = 70.dp, user = user)
             Column() {
                 Text(
                     text = user?.username?:"",
@@ -472,7 +445,7 @@ fun DrawerItem(label: String, modifier: Modifier = Modifier){
     modifier = modifier)
 }
 @Composable
-fun OsmMap(center: GeoPoint?,parseTrip:ParseObject?,onSelectedItem:(ParseObject)->Unit, resetCenter: () -> Unit, change: (view:MapView)->Unit) = run {
+fun OsmMap(center: GeoPoint?,parseTrips:List<ParseObject?>,onSelectedItem:(ParseObject)->Unit, resetCenter: () -> Unit, change: (view:MapView)->Unit) = run {
     val ctx = LocalContext.current
     AndroidView(
         factory = { context ->
@@ -509,34 +482,36 @@ fun OsmMap(center: GeoPoint?,parseTrip:ParseObject?,onSelectedItem:(ParseObject)
             if(myLocationOverlay!=null){
                 it.overlays.add(myLocationOverlay)
             }
-            if (parseTrip!=null){
-                val roadManager = OSRMRoadManager(ctx, USER_AGENT)
-                val waypoints = arrayListOf<GeoPoint>()
-                val trip = parseTrip.toTrip()
-                startGeoPoint = trip.startGeoPoint
-                val startMarker = Marker(it)
-                startMarker.position = trip.startGeoPoint
-                startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                startMarker.icon = ctx.getDrawable(R.drawable.iconmonstr_location_26)
-                it.overlays.add(startMarker)
-                startMarker.setOnMarkerClickListener { marker, mapView ->
-                    onSelectedItem(parseTrip)
-                    false
-                }
-                it.controller.animateTo(trip.startGeoPoint)
-                waypoints.add(trip.startGeoPoint)
-                waypoints.add(trip.endGeoPoint)
-                roadManager.setMean(OSRMRoadManager.MEAN_BY_CAR)
-                CoroutineScope(Dispatchers.IO).launch {
-                    val road = roadManager.getRoad(waypoints)
-                    val roadOverlay = RoadManager.buildRoadOverlay(road)
-                    it.overlays.add(roadOverlay)
-                    it.invalidate()
+            parseTrips.forEach{parseTrip->
+                if(parseTrip!=null){
+                    val roadManager = OSRMRoadManager(ctx, USER_AGENT)
+                    val waypoints = arrayListOf<GeoPoint>()
+                    val trip = parseTrip.toTrip()
+                    startGeoPoint = trip.startGeoPoint
+                    val startMarker = Marker(it)
+                    startMarker.position = trip.startGeoPoint
+                    startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    startMarker.icon = ctx.getDrawable(R.drawable.iconmonstr_location_26)
+                    it.overlays.add(startMarker)
+                    startMarker.setOnMarkerClickListener { marker, mapView ->
+                        onSelectedItem(parseTrip)
+                        false
+                    }
+                    it.controller.animateTo(trip.startGeoPoint)
+                    waypoints.add(trip.startGeoPoint)
+                    waypoints.add(trip.endGeoPoint)
+                    roadManager.setMean(OSRMRoadManager.MEAN_BY_CAR)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val road = roadManager.getRoad(waypoints)
+                        val roadOverlay = RoadManager.buildRoadOverlay(road)
+                        it.overlays.add(roadOverlay)
+                    }
                 }
             }
             if(center !=null) {
                 it.controller.animateTo(center)
                 resetCenter()
             }
+            it.invalidate()
         })
 }

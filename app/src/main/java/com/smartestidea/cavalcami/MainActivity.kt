@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
                 ) {
 //                    PresentationPager()
 
-                    if((uiState == MainUIState.Success || uiState == MainUIState.Idle) && ParseUser.getCurrentUser()!=null)
+                    if((uiState is MainUIState.Success || uiState == MainUIState.Idle) && ParseUser.getCurrentUser()!=null)
                         CavalCamiApp(userViewModel, tripViewModel){ mapView = it }
                     else
                         Login(userViewModel)

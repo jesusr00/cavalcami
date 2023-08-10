@@ -80,22 +80,13 @@ fun ProfileScreen(navController: NavController, userViewModel: UserViewModel) {
     val backCI = user.backCI?.file ?: File(ctx.filesDir, "back_ci.jpg")
 
     val uiState by userViewModel.mainUIState.collectAsState()
-    when(uiState ) {
-        is MainUIState.Error -> displaySb(snackBarHostState, (uiState as MainUIState.Error).errorMsgRes, scope, ctx)
-        MainUIState.Success -> displaySb(snackBarHostState, R.string.user_saved, scope, ctx)
-        else -> {}
-    }
+
     Scaffold(
         topBar = { TopAppBar(title = {Text(text = stringResource(id = R.string.edit_profile))},navigationIcon = {
             IconButton(onClick = { navController.popBackStack() }) {
                 Icon(imageVector = Icons.Rounded.ArrowBack, contentDescription = stringResource(id = R.string.back))
             }
-        })},
-        snackbarHost = {
-        SnackbarHost(hostState = snackBarHostState){
-            Snackbar(snackbarData = it, containerColor = if(uiState == MainUIState.Success) Success else MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error, actionColor = MaterialTheme.colorScheme.onErrorContainer)
-        }
-    }, modifier = Modifier.imePadding()) { innerPadding ->
+        })}, modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
@@ -109,7 +100,7 @@ fun ProfileScreen(navController: NavController, userViewModel: UserViewModel) {
                 ImagePicker(label = null, circleShape = true, file =  profilePhoto ,modifier = Modifier.size(100.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.height(IntrinsicSize.Min)) {
                     EditableText(value = username, label = R.string.username){ username = it}
-                    EditableText(value = email, label = R.string.username, fontSize = 12.sp, keyboardOptions = KeyboardOptions.Default.copy(
+                    EditableText(value = email!!, label = R.string.username, fontSize = 12.sp, keyboardOptions = KeyboardOptions.Default.copy(
                          keyboardType = KeyboardType.Email
                     )){ email = it }
                     Text(
@@ -137,7 +128,7 @@ fun ProfileScreen(navController: NavController, userViewModel: UserViewModel) {
                     .weight(1f))
             }
             Button(onClick = {
-                userViewModel.saveUser(username,email,userPhoneNumber,firstEmergencyNumber,secondEmergencyNumber,profilePhoto,frontCI,backCI)
+                userViewModel.saveUser(username,email!!,userPhoneNumber,firstEmergencyNumber,secondEmergencyNumber,profilePhoto,frontCI,backCI)
             }, modifier = Modifier.fillMaxWidth(0.9f), colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.tertiary,
             ), enabled = uiState != MainUIState.Loading) {

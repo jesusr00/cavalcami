@@ -36,7 +36,7 @@ class UserViewModel @Inject constructor(
                 email = emailOrUsername,
                 password = password,
                 onSuccess = {
-                    _mainUIState.value = MainUIState.Success
+                    _mainUIState.value = MainUIState.Success(null)
                 },
                 onError = {errorMsgRes: Int ->
                     _mainUIState.value = MainUIState.Error(errorMsgRes)
@@ -48,7 +48,7 @@ class UserViewModel @Inject constructor(
                 username = emailOrUsername,
                 password = password,
                 onSuccess = {
-                    _mainUIState.value = MainUIState.Success
+                    _mainUIState.value = MainUIState.Success(null)
                 },
                 onError = {errorMsgRes: Int ->
                     _mainUIState.value = MainUIState.Error(errorMsgRes)
@@ -87,7 +87,7 @@ class UserViewModel @Inject constructor(
                                         user.put("front_ci",parseFrontCI)
                                         user.put("back_ci",parseBackCI)
                                         signUpUseCase(user,{
-                                            _mainUIState.value = MainUIState.Success
+                                            _mainUIState.value = MainUIState.Success(null)
                                         }, {errorMsgRes: Int ->
                                             _mainUIState.value = MainUIState.Error(errorMsgRes)
                                         })
@@ -146,7 +146,7 @@ class UserViewModel @Inject constructor(
                                         user.put("front_ci",parseFrontCI)
                                         user.put("back_ci",parseBackCI)
                                         saveUserUseCase(user,{
-                                            _mainUIState.value = MainUIState.Success
+                                            _mainUIState.value = MainUIState.Success(R.string.user_saved)
                                         }, {errorMsgRes: Int ->
                                             _mainUIState.value = MainUIState.Error(errorMsgRes)
                                         })
@@ -172,7 +172,7 @@ class UserViewModel @Inject constructor(
     fun logout(){
         ParseUser.logOutInBackground {e->
             if(e == null) {
-                _mainUIState.value = MainUIState.Success
+                _mainUIState.value = MainUIState.Success(null)
             }else{
                 _mainUIState.value = MainUIState.Error(getError(e.code))
             }

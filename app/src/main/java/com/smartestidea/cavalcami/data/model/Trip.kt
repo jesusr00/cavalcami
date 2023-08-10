@@ -6,6 +6,7 @@ import com.parse.ParseUser
 import org.osmdroid.util.GeoPoint
 
 data class Trip(
+    val id:String?=null,
     val startAddress:String,
     val endAddress:String,
     val startGeoPoint:GeoPoint,
@@ -16,8 +17,20 @@ data class Trip(
     val suitcases:Int
 )
 
+fun Trip.equalsTo(trip: Trip) =
+            id == trip.id &&
+            startAddress==trip.startAddress &&
+            endAddress == trip.endAddress &&
+            startGeoPoint == trip.startGeoPoint &&
+            endGeoPoint == trip.endGeoPoint &&
+            client?.objectId == trip.client?.objectId &&
+            driver?.objectId == trip.driver?.objectId &&
+            passengers == trip.passengers &&
+            suitcases == trip.suitcases
+
 fun Trip.toParse() = run {
     val parseTrip = ParseObject("Trip")
+    id?.apply { parseTrip.objectId = id}
     parseTrip.put("startAddress",startAddress)
     parseTrip.put("endAddress", endAddress)
     client?.let { parseTrip.put("client", it) }
@@ -35,13 +48,14 @@ fun ParseObject.toTrip() =run{
     val splitStart = startGP!!.split(";")
     val splitEnd = endGP!!.split(";")
     Trip(
-        this.getString("startAddress")?:"",
-        this.getString("endAddress")?:"",
+        objectId,
+        getString("startAddress")?:"",
+        getString("endAddress")?:"",
         GeoPoint(splitStart[0].toDouble(),splitStart[1].toDouble()),
         GeoPoint(splitEnd[0].toDouble(),splitEnd[1].toDouble()),
-        this.getParseUser("client"),
-        this.getParseUser("driver"),
-        this.getInt("passengers"),
-        this.getInt("suitcases")
+        getParseUser("client"),
+        getParseUser("driver"),
+        getInt("passengers"),
+        getInt("suitcases")
     )
 }

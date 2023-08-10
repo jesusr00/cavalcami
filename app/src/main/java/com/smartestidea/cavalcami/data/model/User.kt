@@ -6,7 +6,7 @@ import java.io.File
 
 abstract class User(
     val username:String,
-    val email:String,
+    val email:String?,
     val password:String,
     val phoneNumber:String,
     val profilePhoto: ParseFile?=null,
@@ -14,11 +14,13 @@ abstract class User(
     val backCI: ParseFile?=null
 )
 
+fun ParseUser.isDriver() = this.getBoolean("is_driver")
+
 class Client(
     val egyPhoneNumber:String,
     val otherEgyPhoneNumber: String,
     username: String,
-    email: String,
+    email: String?,
     password: String,
     phoneNumber: String,
     profilePhoto: ParseFile?=null,
@@ -42,3 +44,18 @@ fun Client.toParseUser(): ParseUser = run {
     }
     return user
 }
+
+class Driver(
+    val carNumber:String,
+    val serial:String,
+    val carPhoto:ParseFile?=null,
+    username: String,
+    email: String?,
+    password: String,
+    phoneNumber: String,
+    profilePhoto: ParseFile?=null,
+    frontCI: ParseFile?=null,
+    backCI: ParseFile?=null
+):User(username, email, password, phoneNumber, profilePhoto, frontCI, backCI)
+
+fun ParseUser.toDriver() = Driver(fetchIfNeeded().getString("car_number")?:"",fetchIfNeeded().getString("serial")?:"",fetchIfNeeded().getParseFile("car_photo"),username,email,"",getString("phone_number")?:"", fetchIfNeeded().getParseFile("profile_photo"), fetchIfNeeded().getParseFile("front_ci"), fetchIfNeeded().getParseFile("back_ci"))
